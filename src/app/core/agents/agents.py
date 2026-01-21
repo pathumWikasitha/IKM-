@@ -6,14 +6,15 @@ Verification) and thin node functions that LangGraph uses to invoke them.
 
 from typing import List
 
-from langchain.agents import create_agent
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langgraph.prebuilt import create_react_agent
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage, SystemMessage
 
 from ..llm.factory import create_chat_model
 from .prompts import (
     RETRIEVAL_SYSTEM_PROMPT,
     SUMMARIZATION_SYSTEM_PROMPT,
     VERIFICATION_SYSTEM_PROMPT,
+    PLANNING_SYSTEM_PROMPT,
 )
 from .state import QAState
 from .tools import retrieval_tool
@@ -25,6 +26,15 @@ def _extract_last_ai_content(messages: List[object]) -> str:
         if isinstance(msg, AIMessage):
             return str(msg.content)
     return ""
+
+def create_agent(model, tools, system_prompt: str = ""):
+    """Create a LangGraph React agent. 
+    
+    Note: system_prompt is ignored here as this version of create_react_agent 
+    does not support state_modifier. System prompts should be passed in the 
+    messages list during invocation.
+    """
+    return create_react_agent(model, tools)
 
 
 # Define agents at module level for reuse
@@ -47,30 +57,89 @@ verification_agent = create_agent(
 )
 
 
+planning_agent = create_agent(
+    model=create_chat_model(),
+    tools=[],
+    system_prompt=PLANNING_SYSTEM_PROMPT,
+)
+
+
+def planning_node(state: QAState) -> QAState:
+    """Planning Agent node: decomposes complex questions."""
+    print("DEBUG: Entering planning_node")
+    question = state["question"]
+    
+    try:
+        print("DEBUG: Invoking planning_agent")
+        result = planning_agent.invoke(
+            {"messages": [
+                SystemMessage(content=PLANNING_SYSTEM_PROMPT),
+                HumanMessage(content=question)
+            ]}
+        )
+        print("DEBUG: planning_agent returned")
+    except Exception as e:
+        print(f"DEBUG: planning_agent failed: {e}")
+        raise e
+
+    messages = result.get("messages", [])
+    response_text = _extract_last_ai_content(messages)
+
+    # Simple parsing logic
+    plan = response_text
+    sub_questions = []
+    
+    if "Sub-questions:" in response_text:
+        parts = response_text.split("Sub-questions:")
+        plan = parts[0].replace("Plan:", "").strip()
+        sub_qs_block = parts[1].strip()
+        for line in sub_qs_block.split("\n"):
+            line = line.strip()
+            if line.startswith("- "):
+                sub_questions.append(line[2:])
+    
+    # If no sub-questions found, stick to original question
+    if not sub_questions:
+        sub_questions = [question]
+
+    print(f"DEBUG: Planning done. Sub-questions: {len(sub_questions)}")
+    return {
+        "plan": plan,
+        "sub_questions": sub_questions,
+    }
+
+
 def retrieval_node(state: QAState) -> QAState:
     """Retrieval Agent node: gathers context from vector store.
 
     This node:
-    - Sends the user's question to the Retrieval Agent.
-    - The agent uses the attached retrieval tool to fetch document chunks.
-    - Extracts the tool's content (CONTEXT string) from the ToolMessage.
-    - Stores the consolidated context string in `state["context"]`.
+    - Iterates through `sub_questions` (or uses the main question).
+    - Calls the Retrieval Agent for each query.
+    - Consolidates all retrieved chunks into `state["context"]`.
     """
-    question = state["question"]
+    queries = state.get("sub_questions") or [state["question"]]
+    all_context_parts = []
 
-    result = retrieval_agent.invoke({"messages": [HumanMessage(content=question)]})
-
-    messages = result.get("messages", [])
-    context = ""
-
-    # Prefer the last ToolMessage content (from retrieval_tool)
-    for msg in reversed(messages):
-        if isinstance(msg, ToolMessage):
-            context = str(msg.content)
-            break
+    for query in queries:
+        result = retrieval_agent.invoke(
+            {"messages": [
+                SystemMessage(content=RETRIEVAL_SYSTEM_PROMPT),
+                HumanMessage(content=query)
+            ]}
+        )
+        messages = result.get("messages", [])
+        
+        # Extract context from this specific call
+        for msg in reversed(messages):
+            if isinstance(msg, ToolMessage):
+                all_context_parts.append(str(msg.content))
+                break
+    
+    # Deduplicate or just join. Simple join for now.
+    consolidated_context = "\n\n".join(all_context_parts)
 
     return {
-        "context": context,
+        "context": consolidated_context,
     }
 
 
@@ -88,7 +157,10 @@ def summarization_node(state: QAState) -> QAState:
     user_content = f"Question: {question}\n\nContext:\n{context}"
 
     result = summarization_agent.invoke(
-        {"messages": [HumanMessage(content=user_content)]}
+        {"messages": [
+            SystemMessage(content=SUMMARIZATION_SYSTEM_PROMPT),
+            HumanMessage(content=user_content)
+        ]}
     )
     messages = result.get("messages", [])
     draft_answer = _extract_last_ai_content(messages)
@@ -121,7 +193,10 @@ Draft Answer:
 Please verify and correct the draft answer, removing any unsupported claims."""
 
     result = verification_agent.invoke(
-        {"messages": [HumanMessage(content=user_content)]}
+        {"messages": [
+            SystemMessage(content=VERIFICATION_SYSTEM_PROMPT),
+            HumanMessage(content=user_content)
+        ]}
     )
     messages = result.get("messages", [])
     answer = _extract_last_ai_content(messages)

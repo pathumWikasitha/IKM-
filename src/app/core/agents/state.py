@@ -1,6 +1,6 @@
 """LangGraph state schema for the multi-agent QA flow."""
 
-from typing import TypedDict
+from typing import TypedDict, Optional, List
 
 
 class QAState(TypedDict):
@@ -13,6 +13,8 @@ class QAState(TypedDict):
     """
 
     question: str
-    context: str | None
-    draft_answer: str | None
-    answer: str | None
+    context: Optional[str]
+    plan: Optional[str]
+    sub_questions: Optional[List[str]]
+    draft_answer: Optional[str]
+    answer: Optional[str]

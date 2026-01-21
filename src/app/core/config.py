@@ -4,6 +4,7 @@ This module uses Pydantic Settings to load and validate environment variables
 for OpenAI models, Pinecone settings, and other system parameters.
 """
 
+from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -31,7 +32,7 @@ class Settings(BaseSettings):
 
 
 # Create a singleton settings instance
-_settings: Settings | None = None
+_settings: Optional[Settings] = None
 
 
 def get_settings() -> Settings:

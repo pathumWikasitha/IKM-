@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel
 
 
@@ -20,4 +21,5 @@ class QAResponse(BaseModel):
     """
 
     answer: str
+    plan: Optional[str] = None
     context: str

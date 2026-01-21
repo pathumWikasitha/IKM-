@@ -2,7 +2,7 @@
 
 from pathlib import Path
 from functools import lru_cache
-from typing import List
+from typing import List, Optional
 
 from pinecone import Pinecone
 from langchain_core.documents import Document
@@ -21,7 +21,20 @@ def _get_vector_store() -> PineconeVectorStore:
     settings = get_settings()
 
     pc = Pinecone(api_key=settings.pinecone_api_key)
-    index = pc.Index(settings.pinecone_index_name)
+    
+    # Try to get the index, create if it doesn't exist
+    try:
+        index = pc.Index(settings.pinecone_index_name)
+    except Exception as e:
+        # Index doesn't exist, create it
+        print(f"Index {settings.pinecone_index_name} not found. Creating...")
+        pc.create_index(
+            name=settings.pinecone_index_name,
+            dimension=1536,  # text-embedding-3-small produces 1536-dimensional embeddings
+            metric="cosine",
+            spec={"serverless": {"cloud": "aws", "region": "us-east-1"}}
+        )
+        index = pc.Index(settings.pinecone_index_name)
 
     embeddings = OpenAIEmbeddings(
         model=settings.openai_embedding_model_name,
@@ -33,7 +46,7 @@ def _get_vector_store() -> PineconeVectorStore:
         embedding=embeddings,
     )
 
-def get_retriever(k: int | None = None):
+def get_retriever(k: Optional[int] = None):
     """Get a Pinecone retriever instance.
 
     Args:
@@ -50,7 +63,7 @@ def get_retriever(k: int | None = None):
     return vector_store.as_retriever(search_kwargs={"k": k})
 
 
-def retrieve(query: str, k: int | None = None) -> List[Document]:
+def retrieve(query: str, k: Optional[int] = None) -> List[Document]:
     """Retrieve documents from Pinecone for a given query.
 
     Args:
@@ -63,7 +76,7 @@ def retrieve(query: str, k: int | None = None) -> List[Document]:
     retriever = get_retriever(k=k)
     return retriever.invoke(query)
 
-def index_documents(file_path: Path) -> int:
+def index_documents(docs: list) -> int:
     """Index a list of Document objects into the Pinecone vector store.
 
     Args:
@@ -72,9 +85,6 @@ def index_documents(file_path: Path) -> int:
     Returns:
         The number of documents indexed.
     """
-    loader = PyPDFLoader(str(file_path), mode="single")
-    docs = loader.load()
-
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     texts = text_splitter.split_documents(docs)
 

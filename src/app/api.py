@@ -1,7 +1,8 @@
 from pathlib import Path
 
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from .models import QuestionRequest, QAResponse
 from .services.qa_service import answer_question
@@ -17,6 +18,26 @@ app = FastAPI(
     ),
     version="0.1.0",
 )
+
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins for dev; restrict in prod
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# Mount static files for the frontend
+BASE_DIR = Path(__file__).resolve().parent
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+
+# Serve the index.html at root (optional, or just use /static/index.html)
+@app.get("/", include_in_schema=False)
+async def read_root():
+    return RedirectResponse(url="/static/index.html")
 
 
 @app.exception_handler(Exception)
@@ -41,16 +62,9 @@ async def unhandled_exception_handler(
 
 
 @app.post("/qa", response_model=QAResponse, status_code=status.HTTP_200_OK)
-async def qa_endpoint(payload: QuestionRequest) -> QAResponse:
-    """Submit a question about the vector databases paper.
-
-    US-001 requirements:
-    - Accept POST requests at `/qa` with JSON body containing a `question` field
-    - Validate the request format and return 400 for invalid requests
-    - Return 200 with `answer`, `draft_answer`, and `context` fields
-    - Delegate to the multi-agent RAG service layer for processing
-    """
-
+def qa_endpoint(payload: QuestionRequest) -> QAResponse:
+    """Submit a question about the vector databases paper."""
+    print(f"DEBUG: Received QA request for: {payload.question}")
     question = payload.question.strip()
     if not question:
         # Explicit validation beyond Pydantic's type checking to ensure
@@ -65,6 +79,7 @@ async def qa_endpoint(payload: QuestionRequest) -> QAResponse:
 
     return QAResponse(
         answer=result.get("answer", ""),
+        plan=result.get("plan"),
         context=result.get("context", ""),
     )
 
