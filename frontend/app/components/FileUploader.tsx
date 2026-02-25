@@ -37,7 +37,8 @@ export function FileUploader() {
     formData.append('file', file);
 
     try {
-      const response = await fetch('http://127.0.0.1:8001/index-pdf', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+      const response = await fetch(`${apiUrl}/index-pdf`, {
         method: 'POST',
         body: formData,
       });
