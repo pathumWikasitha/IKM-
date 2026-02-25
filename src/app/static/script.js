@@ -1,12 +1,13 @@
 const chatContainer = document.getElementById('chat-container');
 const questionInput = document.getElementById('question-input');
 const sendBtn = document.getElementById('send-btn');
+const planningToggle = document.getElementById('planning-toggle');
 
 // Auto-resize textarea
-questionInput.addEventListener('input', function() {
+questionInput.addEventListener('input', function () {
     this.style.height = 'auto';
     this.style.height = (this.scrollHeight) + 'px';
-    if(this.value === '') this.style.height = '50px';
+    if (this.value === '') this.style.height = '50px';
 });
 
 // Handle send
@@ -18,7 +19,7 @@ async function handleSend() {
     appendMessage(question, 'user');
     questionInput.value = '';
     questionInput.style.height = '50px';
-    
+
     // Add loading state
     const loadingId = appendLoading();
 
@@ -28,7 +29,10 @@ async function handleSend() {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ question })
+            body: JSON.stringify({
+                question: question,
+                enable_planning: planningToggle.checked
+            })
         });
 
         if (!response.ok) {
@@ -84,7 +88,7 @@ function removeLoading(id) {
 function appendBotResponse(data) {
     const msgDiv = document.createElement('div');
     msgDiv.className = 'message bot-message';
-    
+
     let planHtml = '';
     if (data.plan) {
         planHtml = `
@@ -115,7 +119,7 @@ function appendBotResponse(data) {
         </div>
         ${contextHtml}
     `;
-    
+
     chatContainer.appendChild(msgDiv);
     chatContainer.scrollTop = chatContainer.scrollHeight;
 }
