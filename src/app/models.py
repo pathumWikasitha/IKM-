@@ -10,6 +10,7 @@ class QuestionRequest(BaseModel):
     """
 
     question: str
+    enable_planning: bool = True
 
 
 class QAResponse(BaseModel):

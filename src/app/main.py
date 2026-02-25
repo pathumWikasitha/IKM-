@@ -75,7 +75,7 @@ def qa_endpoint(payload: QuestionRequest) -> QAResponse:
         )
 
     # Delegate to the service layer which runs the multi-agent QA graph
-    result = answer_question(question)
+    result = answer_question(question, payload.enable_planning)
 
     return QAResponse(
         answer=result.get("answer", ""),

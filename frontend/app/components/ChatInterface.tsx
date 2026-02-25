@@ -5,6 +5,7 @@ import { Send } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
 import { MessageBubble } from './MessageBubble';
 import { FileUploader } from './FileUploader';
 
@@ -26,6 +27,7 @@ export default function ChatInterface() {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [enablePlanning, setEnablePlanning] = useState(true);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -59,7 +61,10 @@ export default function ChatInterface() {
       const response = await fetch(`${apiUrl}/qa`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: userMessage.content })
+        body: JSON.stringify({ 
+          question: userMessage.content,
+          enable_planning: enablePlanning
+        })
       });
 
       if (!response.ok) throw new Error('Network request failed');
@@ -104,7 +109,19 @@ export default function ChatInterface() {
             Ask questions about vector databases. Analyzing with Planning, Retrieval, Summarization, and Verification agents.
           </p>
         </div>
-        <FileUploader />
+        <div className="flex items-center gap-6">
+          <div className="flex items-center space-x-2">
+            <Switch 
+              id="planning-mode" 
+              checked={enablePlanning}
+              onCheckedChange={setEnablePlanning}
+            />
+            <label htmlFor="planning-mode" className="text-sm font-medium leading-none cursor-pointer">
+              Query Planning
+            </label>
+          </div>
+          <FileUploader />
+        </div>
       </div>
 
       <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>

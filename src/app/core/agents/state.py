@@ -13,6 +13,7 @@ class QAState(TypedDict):
     """
 
     question: str
+    enable_planning: bool
     context: Optional[str]
     plan: Optional[str]
     sub_questions: Optional[List[str]]

@@ -45,7 +45,7 @@ def get_qa_graph() -> Any:
     return create_qa_graph()
 
 
-def run_qa_flow(question: str) -> Dict[str, Any]:
+def run_qa_flow(question: str, enable_planning: bool = True) -> Dict[str, Any]:
     """Run the complete multi-agent QA flow for a question.
 
     This is the main entry point for the QA system. It:
@@ -55,6 +55,7 @@ def run_qa_flow(question: str) -> Dict[str, Any]:
 
     Args:
         question: The user's question about the vector databases paper.
+        enable_planning: Whether to invoke the planning agent or bypass it.
 
     Returns:
         Dictionary with keys:
@@ -67,6 +68,7 @@ def run_qa_flow(question: str) -> Dict[str, Any]:
 
     initial_state: QAState = {
         "question": question,
+        "enable_planning": enable_planning,
         "context": None,
         "plan": None,
         "sub_questions": None,
