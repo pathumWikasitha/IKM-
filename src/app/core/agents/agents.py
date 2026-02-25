@@ -9,15 +9,15 @@ from typing import List
 from langgraph.prebuilt import create_react_agent
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage, SystemMessage
 
-from ..llm.factory import create_chat_model
-from .prompts import (
+from core.llm.factory import create_chat_model
+from core.agents.prompts import (
     RETRIEVAL_SYSTEM_PROMPT,
     SUMMARIZATION_SYSTEM_PROMPT,
-    VERIFICATION_SYSTEM_PROMPT,
+    VERIFICATION_PROMPT,
     PLANNING_SYSTEM_PROMPT,
 )
-from .state import QAState
-from .tools import retrieval_tool
+from core.agents.state import QAState
+from core.agents.tools import retrieval_tool
 
 
 def _extract_last_ai_content(messages: List[object]) -> str:

@@ -12,7 +12,7 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
-from ..config import get_settings
+from core.config import get_settings
 
 
 @lru_cache(maxsize=1)

@@ -6,8 +6,8 @@ from typing import Any, Dict
 from langgraph.constants import END, START
 from langgraph.graph import StateGraph
 
-from .agents import planning_node, retrieval_node, summarization_node, verification_node
-from .state import QAState
+from core.agents.agents import planning_node, retrieval_node, summarization_node, verification_node
+from core.agents.state import QAState
 
 
 def create_qa_graph() -> Any:

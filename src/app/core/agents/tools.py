@@ -2,8 +2,8 @@
 
 from langchain_core.tools import tool
 
-from ..retrieval.vector_store import retrieve
-from ..retrieval.serialization import serialize_chunks
+from core.retrieval.vector_store import retrieve
+from core.retrieval.serialization import serialize_chunks
 
 
 @tool(response_format="content_and_artifact")
