@@ -13,7 +13,7 @@ from core.llm.factory import create_chat_model
 from core.agents.prompts import (
     RETRIEVAL_SYSTEM_PROMPT,
     SUMMARIZATION_SYSTEM_PROMPT,
-    VERIFICATION_PROMPT,
+    VERIFICATION_SYSTEM_PROMPT,
     PLANNING_SYSTEM_PROMPT,
 )
 from core.agents.state import QAState
