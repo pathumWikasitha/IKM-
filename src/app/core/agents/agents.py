@@ -73,7 +73,7 @@ def planning_node(state: QAState) -> QAState:
         if not state.get("enable_planning", True):
             print("DEBUG: Bypassing planning_agent due to toggle")
             return {
-                "plan": "Planning bypassed by user. Using original question.",
+                "plan": "",
                 "sub_questions": [question],
             }
 

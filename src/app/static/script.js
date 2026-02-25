@@ -3,6 +3,55 @@ const questionInput = document.getElementById('question-input');
 const sendBtn = document.getElementById('send-btn');
 const planningToggle = document.getElementById('planning-toggle');
 
+const fileInput = document.getElementById('pdf-upload');
+const uploadBtn = document.getElementById('upload-trigger-btn');
+const uploadBtnText = document.getElementById('upload-btn-text');
+
+// File Upload Logic
+uploadBtn.addEventListener('click', () => {
+    fileInput.click();
+});
+
+fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Check if it's a PDF
+    if (file.type !== 'application/pdf') {
+        alert('Please upload a PDF document.');
+        fileInput.value = '';
+        return;
+    }
+
+    uploadBtn.disabled = true;
+    uploadBtnText.textContent = 'Uploading...';
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const response = await fetch('/index-pdf', {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (!response.ok) {
+            throw new Error('Upload failed');
+        }
+
+        const data = await response.json();
+        alert(`Success! Indexed ${data.chunks_indexed} document chunks.`);
+
+    } catch (error) {
+        console.error('Error uploading file:', error);
+        alert('Failed to upload the document. Check console for details.');
+    } finally {
+        uploadBtn.disabled = false;
+        uploadBtnText.textContent = 'Upload PDF';
+        fileInput.value = ''; // Reset input
+    }
+});
+
 // Auto-resize textarea
 questionInput.addEventListener('input', function () {
     this.style.height = 'auto';
@@ -90,7 +139,8 @@ function appendBotResponse(data) {
     msgDiv.className = 'message bot-message';
 
     let planHtml = '';
-    if (data.plan) {
+    // Extra defensive check against the backend returning the fallback bypassed string
+    if (data.plan && !data.plan.includes("Planning bypassed by user")) {
         planHtml = `
             <div class="plan-section">
                 <div class="plan-title">⚡ Query Plan</div>
