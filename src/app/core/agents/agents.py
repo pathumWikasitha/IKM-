@@ -4,6 +4,7 @@ This module defines three LangChain agents (Retrieval, Summarization,
 Verification) and thin node functions that LangGraph uses to invoke them.
 """
 
+import json
 from typing import List
 
 from langgraph.prebuilt import create_react_agent
@@ -28,13 +29,8 @@ def _extract_last_ai_content(messages: List[object]) -> str:
     return ""
 
 def create_agent(model, tools, system_prompt: str = ""):
-    """Create a LangGraph React agent. 
-    
-    Note: system_prompt is ignored here as this version of create_react_agent 
-    does not support state_modifier. System prompts should be passed in the 
-    messages list during invocation.
-    """
-    return create_react_agent(model, tools)
+    """Create a LangGraph React agent."""
+    return create_react_agent(model, tools, prompt=system_prompt)
 
 
 # Define agents at module level for reuse
@@ -80,7 +76,6 @@ def planning_node(state: QAState) -> QAState:
         print("DEBUG: Invoking planning_agent")
         result = planning_agent.invoke(
             {"messages": [
-                SystemMessage(content=PLANNING_SYSTEM_PROMPT),
                 HumanMessage(content=question)
             ]}
         )
@@ -92,18 +87,46 @@ def planning_node(state: QAState) -> QAState:
     messages = result.get("messages", [])
     response_text = _extract_last_ai_content(messages)
 
-    # Simple parsing logic
-    plan = response_text
+    plan = ""
     sub_questions = []
-    
-    if "Sub-questions:" in response_text:
-        parts = response_text.split("Sub-questions:")
-        plan = parts[0].replace("Plan:", "").strip()
-        sub_qs_block = parts[1].strip()
-        for line in sub_qs_block.split("\n"):
-            line = line.strip()
-            if line.startswith("- "):
-                sub_questions.append(line[2:])
+
+    if messages:
+        last_message = messages[-1]
+        if isinstance(last_message, AIMessage):
+            # Check for tool_calls representing the Pydantic structured output
+            if getattr(last_message, "tool_calls", None):
+                for tc in last_message.tool_calls:
+                    if tc["name"] == "PlanningOutput":
+                        plan = tc["args"].get("plan", "")
+                        sub_questions = tc["args"].get("sub_questions", [])
+                        break
+            # Fallback if raw content is a dict
+            elif isinstance(last_message.content, dict):
+                plan = last_message.content.get("plan", "")
+                sub_questions = last_message.content.get("sub_questions", [])
+            elif hasattr(last_message, "parsed"): 
+                plan = getattr(last_message.parsed, "plan", "")
+                sub_questions = getattr(last_message.parsed, "sub_questions", [])
+
+    # If the response_format wasn't natively extracted and passed as a string/markdown block containing JSON
+    if not plan and not sub_questions and response_text:
+        try:
+            # Try to parse the response text as JSON (sometimes LLMs wrap it in markdown code blocks)
+            cleaned_text = response_text.strip()
+            if cleaned_text.startswith("```json"):
+                cleaned_text = cleaned_text[7:]
+            if cleaned_text.startswith("```"):
+                cleaned_text = cleaned_text[3:]
+            if cleaned_text.endswith("```"):
+                cleaned_text = cleaned_text[:-3]
+            
+            parsed_json = json.loads(cleaned_text.strip())
+            plan = parsed_json.get("plan", "")
+            sub_questions = parsed_json.get("sub_questions", [])
+        except json.JSONDecodeError:
+            # Fallback for completely unstructured unexpected response
+            plan = response_text
+            sub_questions = []
     
     # If no sub-questions found, stick to original question
     if not sub_questions:
@@ -130,7 +153,6 @@ def retrieval_node(state: QAState) -> QAState:
     for query in queries:
         result = retrieval_agent.invoke(
             {"messages": [
-                SystemMessage(content=RETRIEVAL_SYSTEM_PROMPT),
                 HumanMessage(content=query)
             ]}
         )
@@ -165,7 +187,6 @@ def summarization_node(state: QAState) -> QAState:
 
     result = summarization_agent.invoke(
         {"messages": [
-            SystemMessage(content=SUMMARIZATION_SYSTEM_PROMPT),
             HumanMessage(content=user_content)
         ]}
     )
@@ -201,7 +222,6 @@ Please verify and correct the draft answer, removing any unsupported claims."""
 
     result = verification_agent.invoke(
         {"messages": [
-            SystemMessage(content=VERIFICATION_SYSTEM_PROMPT),
             HumanMessage(content=user_content)
         ]}
     )

@@ -46,15 +46,5 @@ Instructions:
 - Analyze the user's question to identify key entities, time ranges, and distinct topics.
 - If the question is simple, just return the original question as the single step.
 - If the question is complex, decompose it into sub-questions.
-- Output the plan in the following format:
-
-Plan:
-1. [First step]
-2. [Second step]
-...
-
-Sub-questions:
-- [Search query 1]
-- [Search query 2]
-...
+- Output the plan and sub_questions strictly conforming to the requested JSON schema.
 """
