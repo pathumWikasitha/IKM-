@@ -1,5 +1,6 @@
 """Vector store wrapper for Pinecone integration with LangChain."""
 
+import logging
 from pathlib import Path
 from functools import lru_cache
 from typing import List, Optional
@@ -8,11 +9,13 @@ from pinecone import Pinecone
 from langchain_core.documents import Document
 from langchain_pinecone import PineconeVectorStore
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.document_loaders import PyPDFLoader
+
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
-from core.config import get_settings
+from app.core.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 @lru_cache(maxsize=1)
@@ -21,20 +24,19 @@ def _get_vector_store() -> PineconeVectorStore:
     settings = get_settings()
 
     pc = Pinecone(api_key=settings.pinecone_api_key)
-    
-    # Try to get the index, create if it doesn't exist
-    try:
-        index = pc.Index(settings.pinecone_index_name)
-    except Exception as e:
-        # Index doesn't exist, create it
-        print(f"Index {settings.pinecone_index_name} not found. Creating...")
+
+    # Check if index exists; create if missing
+    existing_indexes = [idx.name for idx in pc.list_indexes()]
+    if settings.pinecone_index_name not in existing_indexes:
+        logger.warning("Index %s not found. Creating...", settings.pinecone_index_name)
         pc.create_index(
             name=settings.pinecone_index_name,
             dimension=1536,  # text-embedding-3-small produces 1536-dimensional embeddings
             metric="cosine",
             spec={"serverless": {"cloud": "aws", "region": "us-east-1"}}
         )
-        index = pc.Index(settings.pinecone_index_name)
+
+    index = pc.Index(settings.pinecone_index_name)
 
     embeddings = OpenAIEmbeddings(
         model=settings.openai_embedding_model_name,

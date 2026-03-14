@@ -7,7 +7,7 @@ or agent implementation details.
 
 from typing import Dict, Any
 
-from core.agents.graph import run_qa_flow
+from app.core.agents.graph import run_qa_flow
 
 
 def answer_question(question: str, enable_planning: bool = True) -> Dict[str, Any]:

@@ -2,11 +2,11 @@
 
 from langchain_core.tools import tool
 
-from core.retrieval.vector_store import retrieve
-from core.retrieval.serialization import serialize_chunks
+from app.core.retrieval.vector_store import retrieve
+from app.core.retrieval.serialization import serialize_chunks
 
 
-@tool(response_format="content_and_artifact")
+@tool
 def retrieval_tool(query: str):
     """Search the vector database for relevant document chunks.
 
@@ -29,6 +29,6 @@ def retrieval_tool(query: str):
     # Serialize chunks into formatted string (content)
     context = serialize_chunks(docs)
 
-    # Return tuple: (serialized content, artifact documents)
-    # This follows LangChain's content_and_artifact response format
-    return context, docs
+    # Return just the formatted content string instead of a tuple.
+    # This prevents the LangGraph tools node from crashing when trying to parse the output.
+    return context

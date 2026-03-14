@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     # OpenAI Configuration
     openai_api_key: str
     openai_model_name: str = "gpt-4o-mini"
-    openai_embedding_model_name: str = "text-embedding-3-large"
+    openai_embedding_model_name: str = "text-embedding-3-small"
 
     # Pinecone Configuration
     pinecone_api_key: str
