@@ -1,5 +1,10 @@
 import logging
+import sys
 from pathlib import Path
+
+# Ensure the `src` directory is on sys.path so that `app.*` imports resolve
+# correctly in environments like Vercel where the working directory may differ.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
