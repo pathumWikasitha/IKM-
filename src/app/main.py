@@ -30,6 +30,7 @@ app.add_middleware(
         "http://127.0.0.1:3000",
         "http://localhost:8000",
         "http://127.0.0.1:8000",
+        "https://ikm-lalb.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -37,9 +38,12 @@ app.add_middleware(
 )
 
 
-# Mount static files for the frontend
+# Mount static files for the frontend (skip in serverless environments
+# where the static directory may not exist).
 BASE_DIR = Path(__file__).resolve().parent
-app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+_static_dir = BASE_DIR / "static"
+if _static_dir.is_dir():
+    app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
 
 # Serve the index.html at root (optional, or just use /static/index.html)
